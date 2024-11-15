@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+</head>
+<body>
+    <h1>Login</h1>
+    <form id="loginForm">
+        <label for="username">Enter your username:</label>
+        <input type="text" id="username" required>
+        <button type="submit">Login</button>
+    </form>
+
+    <script>
+        document.getElementById('loginForm').onsubmit = function(event) {
+            event.preventDefault();
+            const username = document.getElementById('username').value;
+
+            if (username) {
+                const ws = new WebSocket("ws://localhost:8080/ws");
+
+                ws.onopen = function() {
+                    // Send the username to the server once WebSocket is open
+                    const msg = { type: 'message', user: username, content: `${username} has joined the call.` };
+                    ws.send(JSON.stringify(msg));
+                    
+                    // Hide the login form after logging in
+                    document.getElementById('loginForm').style.display = 'none';
+                    
+                    // Optionally, you can show the chat or call screen here
+                    // Example: window.location.href = 'chat.html'; or similar logic
+                };
+
+                ws.onmessage = function(event) {
+                    console.log('Message from server: ', event.data);
+                    // Process incoming messages, like updates to users or chat
+                };
+            } else {
+                alert('Please enter a valid username.');
+            }
+        };
+    </script>
+</body>
+</html>
