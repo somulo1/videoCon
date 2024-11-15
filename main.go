@@ -23,7 +23,7 @@ type Message struct {
 }
 
 var (
-	clients   = make(map[*websocket.Conn]bool)
+	clients   = make(map[*websocket.Conn]string) // Map to store WebSocket clients and their usernames
 	broadcast = make(chan Message)
 )
 
@@ -80,9 +80,9 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 		})
 
 		// Add the client to the list of clients
-		clients[conn] = true
+		clients[conn] = msg.User
 
-		// Continue listening for messages
+		// Continue listening for WebRTC signaling messages
 		for {
 			err := conn.ReadJSON(&msg)
 			if err != nil {
@@ -90,7 +90,23 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 				delete(clients, conn)
 				break
 			}
-			broadcast <- msg
+			// Handle WebRTC signaling messages
+			if msg.Type == "offer" || msg.Type == "answer" || msg.Type == "candidate" {
+				// Forward WebRTC signaling message to all other clients
+				for client := range clients {
+					if client != conn {
+						err := client.WriteJSON(msg)
+						if err != nil {
+							log.Printf("Error sending message: %v", err)
+							client.Close()
+							delete(clients, client)
+						}
+					}
+				}
+			} else {
+				// Handle regular chat messages
+				broadcast <- msg
+			}
 		}
 		return
 	}
@@ -118,9 +134,9 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 		})
 
 		// Add the client to the list of clients
-		clients[conn] = true
+		clients[conn] = msg.User
 
-		// Continue listening for messages
+		// Continue listening for WebRTC signaling messages
 		for {
 			err := conn.ReadJSON(&msg)
 			if err != nil {
@@ -128,7 +144,23 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 				delete(clients, conn)
 				break
 			}
-			broadcast <- msg
+			// Handle WebRTC signaling messages
+			if msg.Type == "offer" || msg.Type == "answer" || msg.Type == "candidate" {
+				// Forward WebRTC signaling message to all other clients
+				for client := range clients {
+					if client != conn {
+						err := client.WriteJSON(msg)
+						if err != nil {
+							log.Printf("Error sending message: %v", err)
+							client.Close()
+							delete(clients, client)
+						}
+					}
+				}
+			} else {
+				// Handle regular chat messages
+				broadcast <- msg
+			}
 		}
 		return
 	}
